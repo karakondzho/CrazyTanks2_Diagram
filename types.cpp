@@ -31,6 +31,7 @@ enum WorldType
 enum TankType
 {
    EMPTY_TANK,
+   GOLD,
    ENEMY,
    PLAYER,
 };

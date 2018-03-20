@@ -48,10 +48,10 @@ int main()
    CHAR_INFO BufferOfCharacters[BufferWidth*BufferHeight] = {};
 
    ConsoleOutHandle = CreateConsoleScreenBuffer(GENERIC_READ|GENERIC_WRITE,
-                                             0,
-                                             0,
-                                             CONSOLE_TEXTMODE_BUFFER,
-                                             0);
+                                                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                                0,
+                                                CONSOLE_TEXTMODE_BUFFER,
+                                                0);
    
    if(ConsoleOutHandle == INVALID_HANDLE_VALUE)
    {
@@ -71,13 +71,15 @@ int main()
 
    SetConsoleCursorInfo(ConsoleOutHandle, &CursorInfo);
 
+      
    INPUT_RECORD InputBuffer = {};
-   uint InputBufferSize = 128;
-   ulong InputBufferEvents;
+   const int InputBufferSize = 200;
+   ulong InputBufferEvents = 0;
 
-   const uint NumberOfTanks = 15; //NOTE: This number includes player tank
+   const uint NumberOfTanks = 15; //NOTE: This number includes player tank and GoldTank
    Tank TanksArray[NumberOfTanks] = {};
    Tank *PlayerTank = &TanksArray[0];
+   Tank *GoldTank = &TanksArray[1];
    
    Projectile ProjectilesArray[NumberOfTanks] = {};
    Projectile *PlayerProjectile = &ProjectilesArray[0];
@@ -94,16 +96,16 @@ int main()
    bool Out = false;
    float TankSpeed = 0.0008f;
 
+
    while(!Out)
    {
+                                              
       bool ReadFromConsoleInput = ReadConsoleInput(ConsoleInHandle,
                                                    &InputBuffer,
                                                    InputBufferSize,
                                                    &InputBufferEvents);
 
-      for(ulong i = 0;
-          i < InputBufferEvents;
-          i++)
+      if(ReadFromConsoleInput)
       {
          if(InputBuffer.EventType == KEY_EVENT)
          {
@@ -138,8 +140,11 @@ int main()
 
                   case VK_SPACE:
                      {
-                        ShootProjectile(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
-                                        PlayerProjectile, MaxProjectiles);
+                        if(PlayerProjectile->Shooter->State == ACTIVE)
+                        {
+                           ShootProjectile(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
+                                           PlayerProjectile, MaxProjectiles);
+                        }
                      }break;
 
                   default:
@@ -174,7 +179,5 @@ int main()
       SetConsoleActiveScreenBuffer(ConsoleOutHandle);
    }
 
-
    return(0);
 }
-

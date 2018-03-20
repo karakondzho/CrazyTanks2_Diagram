@@ -92,7 +92,7 @@ InitializeTank(World *WorldBuffer, uint Height, Tank *T,
 }
 
 void
-MakeMainPlayer(World *WorldBuffer, uint Width, uint Height, Tank *TanksArray)
+MakeMainPlayer(World *WorldBuffer, uint Width, uint Height, Tank *PlayerTank)
 {
    COORD Pos = {};
    Pos.X = Width - 3;
@@ -100,7 +100,7 @@ MakeMainPlayer(World *WorldBuffer, uint Width, uint Height, Tank *TanksArray)
 
    uint TankDirection = 2; //NOTE: 0 - Left, 1 - Right, 2 - Up , 3 - Down
    TankType Type = PLAYER;
-   InitializeTank(WorldBuffer, Height, &TanksArray[0], Pos, TankDirection, Type);
+   InitializeTank(WorldBuffer, Height, PlayerTank, Pos, TankDirection, Type);
 }
 
 bool
@@ -332,7 +332,7 @@ InitializeWorld(World *WorldBuffer, uint Width, uint Height, Tank *TanksArray,
                 Projectile *ProjectilesArray, uint TanksNumber, float ProjectileSpeed)
 {
    MakeOutWalls(WorldBuffer, Width, Height);
-   MakeMainPlayer(WorldBuffer, Width, Height, TanksArray);
+   MakeMainPlayer(WorldBuffer, Width, Height, &TanksArray[0]);
    MakeInnerWalls(WorldBuffer, Width, Height);
    MakeEnemyTanks(WorldBuffer, Width, Height, TanksArray, TanksNumber);
    MakeProjectileArray(ProjectilesArray, TanksArray, TanksNumber, ProjectileSpeed);
@@ -446,7 +446,6 @@ MakeMove(World *WorldBuffer, uint Height, Tank *T, COORD OldBodyPosition,
          {
             WorldBuffer[T->BodyPosition.X*Height+T->BodyPosition.Y].Type = PLAYER_TANK_BODY;
          }
-
       }
 }
 
@@ -595,6 +594,36 @@ MoveEnemieTanks(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOf
       NewSpeed = 0;
    }
 }
+void
+ClearProjectile(Projectile *P)
+{
+   P->Life = 0;
+   P->Fire = false;
+   P->Position = P->Shooter->MuzzlePosition;
+   P->ProjectileDirection = P->Shooter->TankDirection;
+}
+
+void CheckProjectileOnTank(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfTanks, Projectile P)
+{
+   for(int i = 0;
+       i < NumberOfTanks;
+       i++)
+   {
+      if((TanksArray[i].MuzzlePosition.X == P.Position.X &&
+          TanksArray[i].MuzzlePosition.Y == P.Position.Y) ||
+         (TanksArray[i].BodyPosition.X == P.Position.X &&
+          TanksArray[i].BodyPosition.Y == P.Position.Y))
+
+      {
+         if(P.Shooter->Type != TanksArray[i].Type)
+         {
+            TanksArray[i].State = DEAD;
+            WorldBuffer[TanksArray[i].MuzzlePosition.X*Height+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
+            WorldBuffer[TanksArray[i].BodyPosition.X*Height+TanksArray[i].BodyPosition.Y].Type = EMPTY;
+         }
+      }
+   }
+}
 
 void
 MoveProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfTanks,
@@ -619,88 +648,51 @@ MoveProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfT
    }
    else if(Object == WALL)
    {
-      P->Life = 0;
-      P->Fire = false;
-      P->Position = P->Shooter->MuzzlePosition;
-      P->ProjectileDirection = P->Shooter->TankDirection;
+      ClearProjectile(P);
    }
    else if(Object == TANK_LEFT_RIGHT || Object == TANK_UP_DOWN)
    {
-      P->Life = 0;
-      P->Fire = false;
-      P->Position = P->Shooter->MuzzlePosition;
-      P->ProjectileDirection = P->Shooter->TankDirection;
-      for(int i = 0;
-          i < NumberOfTanks;
-          i++)
-      {
-         if((TanksArray[i].MuzzlePosition.X == NewProjectilePosition.X &&
-            TanksArray[i].MuzzlePosition.Y == NewProjectilePosition.Y) ||
-            (TanksArray[i].BodyPosition.X == NewProjectilePosition.X &&
-             TanksArray[i].BodyPosition.Y == NewProjectilePosition.Y))
-
-         {
-            if(P->Shooter->Type != TanksArray[i].Type)
-            {
-               TanksArray[i].State = DEAD;
-               WorldBuffer[TanksArray[i].MuzzlePosition.X*Height+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
-               WorldBuffer[TanksArray[i].BodyPosition.X*Height+TanksArray[i].BodyPosition.Y].Type = EMPTY;
-            }
-         }
-      }
+      P->Position = NewProjectilePosition;
+      CheckProjectileOnTank(WorldBuffer, Height, TanksArray, NumberOfTanks, *P);
+      ClearProjectile(P);
    }
    else if(Object == ENEMY_TANK_BODY)
    {
-      P->Life = 0;
-      P->Fire = false;
-      P->Position = P->Shooter->MuzzlePosition;
-      P->ProjectileDirection = P->Shooter->TankDirection;
-      for(int i = 0;
-          i < NumberOfTanks;
-          i++)
-      {
-         if((TanksArray[i].MuzzlePosition.X == NewProjectilePosition.X &&
-            TanksArray[i].MuzzlePosition.Y == NewProjectilePosition.Y) ||
-            (TanksArray[i].BodyPosition.X == NewProjectilePosition.X &&
-             TanksArray[i].BodyPosition.Y == NewProjectilePosition.Y))
-
-         {
-            if(P->Shooter->Type != TanksArray[i].Type)
-            {
-               TanksArray[i].State = DEAD;
-               WorldBuffer[TanksArray[i].MuzzlePosition.X*Height+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
-               WorldBuffer[TanksArray[i].BodyPosition.X*Height+TanksArray[i].BodyPosition.Y].Type = EMPTY;
-            }
-         }
-      }
+      P->Position = NewProjectilePosition;
+      CheckProjectileOnTank(WorldBuffer, Height, TanksArray, NumberOfTanks, *P);
+      ClearProjectile(P);
    }
    else if(Object == PLAYER_TANK_BODY)
    {
-      P->Life = 0;
-      P->Fire = false;
-      P->Position = P->Shooter->MuzzlePosition;
-      P->ProjectileDirection = P->Shooter->TankDirection;
-      for(int i = 0;
-          i < NumberOfTanks;
-          i++)
-      {
-         if((TanksArray[i].MuzzlePosition.X == NewProjectilePosition.X &&
-            TanksArray[i].MuzzlePosition.Y == NewProjectilePosition.Y) ||
-            (TanksArray[i].BodyPosition.X == NewProjectilePosition.X &&
-             TanksArray[i].BodyPosition.Y == NewProjectilePosition.Y))
-
-         {
-            if(P->Shooter->Type != TanksArray[i].Type)
-            {
-               TanksArray[i].State = DEAD;
-               WorldBuffer[TanksArray[i].MuzzlePosition.X*Height+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
-               WorldBuffer[TanksArray[i].BodyPosition.X*Height+TanksArray[i].BodyPosition.Y].Type = EMPTY;
-            }
-         }
-      }
+      P->Position = NewProjectilePosition;
+      CheckProjectileOnTank(WorldBuffer, Height, TanksArray, NumberOfTanks, *P);
+      ClearProjectile(P);
    }
 }
 
+COORD
+CheckNextProjectileMove(Projectile P, COORD NewProjectilePosition)
+{
+   COORD Result = NewProjectilePosition;
+   if(P.ProjectileDirection == LEFT)
+   {
+      Result.Y--;
+   }
+   else if(P.ProjectileDirection == RIGHT)
+   {
+      Result.Y++;
+   }
+   else if(P.ProjectileDirection == UP)
+   {
+      Result.X--;
+   }
+   else if(P.ProjectileDirection == DOWN)
+   {
+      Result.X++;
+   }
+
+   return Result;
+}
 void
 ShootProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfTanks,
                 Projectile *P, uint MaxProjectiles)
@@ -709,66 +701,21 @@ ShootProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOf
    COORD OldProjectilePosition = P->Position;
    if(P->Fire == false && P->Life < MaxProjectiles)
    {
-      if(P->ProjectileDirection == LEFT)
-      {
-         NewProjectilePosition.Y--;
-         MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                        P, NewProjectilePosition, MaxProjectiles);
-      }
-      else if(P->ProjectileDirection == RIGHT)
-      {
-         NewProjectilePosition.Y++;
-         MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                        P, NewProjectilePosition, MaxProjectiles);
-      }
-      else if(P->ProjectileDirection == UP)
-      {
-         NewProjectilePosition.X--;
-         MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                        P, NewProjectilePosition, MaxProjectiles);
-      }
-      else if(P->ProjectileDirection == DOWN)
-      {
-         NewProjectilePosition.X++;
-         MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                        P, NewProjectilePosition, MaxProjectiles);
-      }
+      NewProjectilePosition = CheckNextProjectileMove(*P, NewProjectilePosition);
+      MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
+                     P, NewProjectilePosition, MaxProjectiles);
    }
    else if(P->Life < MaxProjectiles)
    {
-         if(P->ProjectileDirection == LEFT)
-         {
-            NewProjectilePosition.Y--;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
-         }
-         else if(P->ProjectileDirection == RIGHT)
-         {
-            NewProjectilePosition.Y++;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
-         }
-         else if(P->ProjectileDirection == UP)
-         {
-            NewProjectilePosition.X--;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
-         }
-         else if(P->ProjectileDirection == DOWN)
-         {
-            NewProjectilePosition.X++;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
-         }
-         WorldBuffer[OldProjectilePosition.X*Height+OldProjectilePosition.Y].Type = EMPTY;
-         P->Life++;
+      NewProjectilePosition = CheckNextProjectileMove(*P, NewProjectilePosition);
+      MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
+                     P, NewProjectilePosition, MaxProjectiles);
+      WorldBuffer[OldProjectilePosition.X*Height+OldProjectilePosition.Y].Type = EMPTY;
+      P->Life++;
    }
    else
    {
-      P->Life = 0;
-      P->Fire = false;
-      P->Position = P->Shooter->MuzzlePosition;
-      P->ProjectileDirection = P->Shooter->TankDirection;
+      ClearProjectile(P);
       WorldBuffer[OldProjectilePosition.X*Height+OldProjectilePosition.Y].Type = EMPTY;
    }
 }
@@ -785,30 +732,9 @@ UpdatePlayerProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint N
       COORD NewProjectilePosition = P->Position;
       if(P->Fire == true && P->Life < MaxProjectiles)
       {
-         if(P->ProjectileDirection == LEFT)
-         {
-            NewProjectilePosition.Y--;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
+         NewProjectilePosition = CheckNextProjectileMove(*P, NewProjectilePosition);
+         MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
                            P, NewProjectilePosition, MaxProjectiles);
-         }
-         else if(P->ProjectileDirection == RIGHT)
-         {
-            NewProjectilePosition.Y++;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
-         }
-         else if(P->ProjectileDirection == UP)
-         {
-            NewProjectilePosition.X--;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
-         }
-         else if(P->ProjectileDirection == DOWN)
-         {
-            NewProjectilePosition.X++;
-            MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
-         }
          P->Life++;
          WorldBuffer[OldProjectilePosition.X*Height+OldProjectilePosition.Y].Type = EMPTY;
          if(P->Life >= MaxProjectiles)
@@ -818,10 +744,7 @@ UpdatePlayerProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint N
       }
       else
       {
-         P->Life = 0;
-         P->Fire = false;
-         P->Position = P->Shooter->MuzzlePosition;
-         P->ProjectileDirection = P->Shooter->TankDirection;
+         ClearProjectile(P);
       }
       NewSpeed = 0;
    }
