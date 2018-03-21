@@ -23,7 +23,7 @@ InitializeConsole(HANDLE *InputHandle, HANDLE *OutputHandle)
 }
 
 void
-MakeOutWalls(World *WorldBuffer, uint Width, uint Height)
+MakeField(World *WorldBuffer, uint Width, uint Height)
 {
    for(int i = 0;
        i < Width;
@@ -40,7 +40,7 @@ MakeOutWalls(World *WorldBuffer, uint Width, uint Height)
          else if((i == 1) || (i == (Width-1)) ||
                  (j == 0) || (j == (Height-1)))
          {
-            WorldBuffer[i*Height+j].Type = WALL;
+            WorldBuffer[i*Height+j].Type = FIELD;
          }
          else
          {
@@ -56,7 +56,7 @@ InitializeTank(World *WorldBuffer, uint Height, Tank *T,
 {
    T->MuzzlePosition = TankPosition;
    T->Type = Type;
-   T->State = ACTIVE;
+   T->State = LIVE;
    if(TankDirection == 0)
    {
       T->BodyPosition = {TankPosition.X, TankPosition.Y + 1};
@@ -81,26 +81,19 @@ InitializeTank(World *WorldBuffer, uint Height, Tank *T,
       T->TankDirection = DOWN;
       WorldBuffer[T->MuzzlePosition.X*Height+T->MuzzlePosition.Y].Type = TANK_UP_DOWN;
    }
+   
    if(Type == ENEMY)
    {
       WorldBuffer[T->BodyPosition.X*Height+T->BodyPosition.Y].Type = ENEMY_TANK_BODY;
+   }
+   else if(Type == SUPER_ENEMY)
+   {
+      WorldBuffer[T->BodyPosition.X*Height+T->BodyPosition.Y].Type = SUPER_ENEMY_TANK_BODY;
    }
    else if(Type == PLAYER)
    {
       WorldBuffer[T->BodyPosition.X*Height+T->BodyPosition.Y].Type = PLAYER_TANK_BODY;
    }
-}
-
-void
-MakeMainPlayer(World *WorldBuffer, uint Width, uint Height, Tank *PlayerTank)
-{
-   COORD Pos = {};
-   Pos.X = Width - 3;
-   Pos.Y = Height / 2;
-
-   uint TankDirection = 2; //NOTE: 0 - Left, 1 - Right, 2 - Up , 3 - Down
-   TankType Type = PLAYER;
-   InitializeTank(WorldBuffer, Height, PlayerTank, Pos, TankDirection, Type);
 }
 
 bool
@@ -115,91 +108,86 @@ IsEmptyCell(World *WorldBuffer, uint Height, uint i, uint j)
 }
 
 void
-PutWall(World *WorldBuffer, uint Width, uint Height, Wall W)
+WriteWallStats(World *WorldBuffer, uint Height, Wall *W, COORD Position, ObjectState State, uint Strength)
 {
-   while(W.BlocksInWall)
-   {
-      COORD RandPos = {};
-
-      RandPos.X = rand() % (Width-1) + 2;
-      RandPos.Y = rand() % (Height-1) + 1;
-
-      if(IsEmptyCell(WorldBuffer, Height, RandPos.X, RandPos.Y))
-      {
-         WorldBuffer[RandPos.X*Height+RandPos.Y].Type = WALL;
-         W.BlocksInWall--;
-         while(W.BlocksInWall)
-         {
-            int i = RandPos.X;
-            int j = RandPos.Y;
-
-            if(IsEmptyCell(WorldBuffer, Height, --i, j))
-            {
-               WorldBuffer[i*Height+j].Type = WALL;
-               RandPos.X = i;
-               W.BlocksInWall--;
-            }
-            else if(IsEmptyCell(WorldBuffer, Height, ++i, j))
-            {
-               WorldBuffer[i*Height+j].Type = WALL;
-               RandPos.X = i;
-               W.BlocksInWall--;
-            }
-            else if(IsEmptyCell(WorldBuffer, Height, i, --j))
-            {
-               WorldBuffer[i*Height+j].Type = WALL;
-               RandPos.Y = j;
-               W.BlocksInWall--;
-            }
-            else if(IsEmptyCell(WorldBuffer, Height, i, ++j))
-            {
-               WorldBuffer[i*Height+j].Type = WALL;
-               RandPos.Y = j;
-               W.BlocksInWall--;
-            }
-         }
-      }
-   }
+   W->Position = {Position.X, Position.Y};
+   W->State = State;
+   W->Strength = Strength;
+   WorldBuffer[Position.X*Height+Position.Y].Type = WALL;
 }
 
 void
-MakeInnerWalls(World *WorldBuffer, uint Width, uint Height)
+MakeWalls(World *WorldBuffer, uint Width, uint Height, Wall *W, uint NumberOfWalls, uint WallStrength)
 {
-   Wall BigWalls = {};
-   Wall MiddleWalls = {};
-   Wall SmallWalls = {};
+   uint Index = 0;
+   for(short i = 2;
+       i < (Width - 1);
+       i++)
+   {
+      for(short j = 1;
+          j < (Height - 1);
+          j++)
+      {
+         if(WorldBuffer[i*Height+j].Type == WALL)
+         {
+            if(Index < NumberOfWalls)
+            {
+               W[Index].Position = {i, j};
+               W[Index].State = LIVE;
+               W[Index].Strength = WallStrength;
+               Index++;
+            }
 
-   //NOTE: Yeah, magic numbers :)
-   uint NumberOfBigWalls = 10;
-   uint NumberOfMiddleWalls = 15;
-   uint NumberOfSmallWalls = 20;
-
+         }
+      }
+   }
    srand(time(0));
-   BigWalls.NumberOfWalls = rand() % NumberOfBigWalls + 1;
-   BigWalls.BlocksInWall = 4;
+   COORD RandPos = {};
 
-   MiddleWalls.NumberOfWalls = rand() % NumberOfMiddleWalls + 1;
-   MiddleWalls.BlocksInWall = 2;
-
-   SmallWalls.NumberOfWalls = rand() % NumberOfSmallWalls + 1;
-   SmallWalls.BlocksInWall = 1;
-
-   while(BigWalls.NumberOfWalls)
+   while(Index < NumberOfWalls)
    {
-      PutWall(WorldBuffer, Width, Height, BigWalls);
-      BigWalls.NumberOfWalls--;
-   }
-   
-   while(MiddleWalls.NumberOfWalls)
-   {
-      PutWall(WorldBuffer, Width, Height, MiddleWalls);
-      MiddleWalls.NumberOfWalls--;
-   }
-
-   while(SmallWalls.NumberOfWalls)
-   {
-      PutWall(WorldBuffer, Width, Height, SmallWalls);
-      SmallWalls.NumberOfWalls--;
+      RandPos.X = rand() % (Width-1) + 2;
+      RandPos.Y = rand() % (Height-1) + 1;
+      uint NumberOfBlocks = rand() % 4;
+      while(NumberOfBlocks && (Index < NumberOfWalls))
+      {
+         if(IsEmptyCell(WorldBuffer, Height, RandPos.X, RandPos.Y))
+         {
+            WriteWallStats(WorldBuffer, Height, &W[Index], RandPos, LIVE, WallStrength);
+            --NumberOfBlocks;
+            ++RandPos.X;
+            ++Index;
+         }
+         else if(IsEmptyCell(WorldBuffer, Height, ++RandPos.X, RandPos.Y))
+         {
+            WriteWallStats(WorldBuffer, Height, &W[Index], RandPos, LIVE, WallStrength);
+            --NumberOfBlocks;
+            ++Index;
+         }
+         else if(IsEmptyCell(WorldBuffer, Height, RandPos.X, --RandPos.Y))
+         {
+            WriteWallStats(WorldBuffer, Height, &W[Index], RandPos, LIVE, WallStrength);
+            --NumberOfBlocks;
+            ++Index;
+         }
+         else if(IsEmptyCell(WorldBuffer, Height, --RandPos.X, RandPos.Y))
+         {
+            WriteWallStats(WorldBuffer, Height, &W[Index], RandPos, LIVE, WallStrength);
+            --NumberOfBlocks;
+            ++Index;
+         }
+         else if(IsEmptyCell(WorldBuffer, Height, RandPos.X, ++RandPos.Y))
+         {
+            WriteWallStats(WorldBuffer, Height, &W[Index], RandPos, LIVE, WallStrength);
+            --NumberOfBlocks;
+            ++Index;
+         }
+         else
+         {
+            RandPos.X = rand() % (Width-1) + 2;
+            RandPos.Y = rand() % (Height-1) + 1;
+         }
+      }
    }
 }
 
@@ -263,6 +251,7 @@ CheckNearbyTanks(World *WorldBuffer, uint Width, uint Height, int PosX, int PosY
          if(WorldBuffer[i*Height+j].Type == TANK_LEFT_RIGHT ||
             WorldBuffer[i*Height+j].Type == TANK_UP_DOWN ||
             WorldBuffer[i*Height+j].Type == ENEMY_TANK_BODY ||
+            WorldBuffer[i*Height+j].Type == SUPER_ENEMY_TANK_BODY ||
             WorldBuffer[i*Height+j].Type == PLAYER_TANK_BODY)
          {
             return false;
@@ -274,37 +263,42 @@ CheckNearbyTanks(World *WorldBuffer, uint Width, uint Height, int PosX, int PosY
 }
 
 void
-MakeEnemyTanks(World *WorldBuffer, uint Width, uint Height, Tank *TanksArray, uint TanksNumber)
+MakeTanks(World *WorldBuffer, uint Width, uint Height, Tank *TanksArray, uint TanksNumber)
 {
-   uint Count = TanksNumber-1;
-   while(Count)
+   for(int i = 0;
+       i < TanksNumber;
+       i++)
    {
-      COORD RandPos;
-      RandPos.X = rand() % (Width - 1) + 2;
-      RandPos.Y = rand() % (Height - 1) + 1;
-
-      if(IsEmptyCell(WorldBuffer, Height, RandPos.X, RandPos.Y))
+      while(TanksArray[i].Type == EMPTY_TANK)
       {
-         if(IsEmptyCell(WorldBuffer, Height, RandPos.X+1, RandPos.Y+1) &&
-            IsEmptyCell(WorldBuffer, Height, RandPos.X-1, RandPos.Y+1) &&
-            IsEmptyCell(WorldBuffer, Height, RandPos.X+1, RandPos.Y-1) &&
-            IsEmptyCell(WorldBuffer, Height, RandPos.X-1, RandPos.Y-1))
-
+         COORD RandPos;
+         RandPos.X = rand() % (Width - 1) + 2;
+         RandPos.Y = rand() % (Height - 1) + 1;
+         if(IsEmptyCell(WorldBuffer, Height, RandPos.X, RandPos.Y))
          {
-            if(CheckNearbyTanks(WorldBuffer, Width, Height, RandPos.X, RandPos.Y))
+            if(IsEmptyCell(WorldBuffer, Height, RandPos.X+1, RandPos.Y+1) &&
+               IsEmptyCell(WorldBuffer, Height, RandPos.X-1, RandPos.Y+1) &&
+               IsEmptyCell(WorldBuffer, Height, RandPos.X+1, RandPos.Y-1) &&
+               IsEmptyCell(WorldBuffer, Height, RandPos.X-1, RandPos.Y-1))
+
             {
-               for(int i = 1;
-                   i < TanksNumber;
-                   i++)
+               if(CheckNearbyTanks(WorldBuffer, Width, Height, RandPos.X, RandPos.Y))
                {
-                  if(TanksArray[i].Type == EMPTY_TANK)
+                  uint MuzzleDirection = rand() % 4; //NOTE: 0 - Left, 1 - Right, 2 - Top, 3 - Bottom
+                  if(i == 0)
                   {
-                     uint MuzzleDirection = rand() % 4; //NOTE: 0 - Left, 1 - Right, 2 - Top, 3 - Bottom
-                     InitializeTank(WorldBuffer, Height, &TanksArray[i], RandPos, MuzzleDirection, ENEMY); 
-                     break;
+                     InitializeTank(WorldBuffer, Height, &TanksArray[i], RandPos, MuzzleDirection, PLAYER); 
                   }
+                  else if(i == 1)
+                  {
+                     InitializeTank(WorldBuffer, Height, &TanksArray[i], RandPos, MuzzleDirection, SUPER_ENEMY); 
+                  }
+                  else
+                  {
+                     InitializeTank(WorldBuffer, Height, &TanksArray[i], RandPos, MuzzleDirection, ENEMY); 
+                  }
+                  break;
                }
-               Count--;
             }
          }
       }
@@ -328,13 +322,46 @@ MakeProjectileArray(Projectile *ProjectilesArray, Tank *TanksArray, uint TanksNu
 }
 
 void
-InitializeWorld(World *WorldBuffer, uint Width, uint Height, Tank *TanksArray,
-                Projectile *ProjectilesArray, uint TanksNumber, float ProjectileSpeed)
+MakeChest(World *WorldBuffer, uint Width, uint Height, Chest *GoldChest)
 {
-   MakeOutWalls(WorldBuffer, Width, Height);
-   MakeMainPlayer(WorldBuffer, Width, Height, &TanksArray[0]);
-   MakeInnerWalls(WorldBuffer, Width, Height);
-   MakeEnemyTanks(WorldBuffer, Width, Height, TanksArray, TanksNumber);
+   COORD Pos = {};
+   Pos.X = Width - 2;
+   Pos.Y = Height / 2;
+
+   for(int i = (Pos.X - 1);
+       i <= Pos.X;
+       i++)
+   {
+      for(int j = (Pos.Y - 1);
+          j <= (Pos.Y + 1);
+          j++)
+      {
+         if(i == Pos.X && j == Pos.Y)
+         {
+            GoldChest->Position = Pos;
+            GoldChest->State = LIVE;
+            WorldBuffer[i*Height+j].Type = CHEST;
+         }
+         else
+         {
+            WorldBuffer[i*Height+j].Type = WALL;
+         }
+      }
+   }
+
+}
+
+void
+InitializeWorld(World *WorldBuffer, uint Width, uint Height,
+                Tank *TanksArray, uint TanksNumber,
+                Projectile *ProjectilesArray, float ProjectileSpeed,
+                Chest *GoldChest,
+                Wall *WallsArray, uint NumberOfWalls, uint WallStrength)
+{
+   MakeField(WorldBuffer, Width, Height);
+   MakeChest(WorldBuffer, Width, Height, GoldChest);
+   MakeWalls(WorldBuffer, Width, Height, WallsArray, NumberOfWalls, WallStrength);
+   MakeTanks(WorldBuffer, Width, Height, TanksArray, TanksNumber);
    MakeProjectileArray(ProjectilesArray, TanksArray, TanksNumber, ProjectileSpeed);
 }
 
@@ -363,17 +390,37 @@ DrawCharactersToBuffer(World *WorldBuffer, uint Width, uint Height, CHAR_INFO *B
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = 0;
          }
-         else if(W.Type == WALL)
+         else if(W.Type == FIELD)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_RED;
          }
-         else if(W.Type == PLAYER_TANK_BODY)
+         else if(W.Type == WALL)
+         {
+            CharInfo->Char.AsciiChar = ' ';
+            CharInfo->Attributes = BACKGROUND_INTENSITY;
+         }
+         else if(W.Type == HIT_WALL)
+         {
+            CharInfo->Char.AsciiChar = ' ';
+            CharInfo->Attributes = BACKGROUND_RED;
+         }
+         else if(W.Type == CHEST)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_INTENSITY;
          }
+         else if(W.Type == PLAYER_TANK_BODY)
+         {
+            CharInfo->Char.AsciiChar = ' ';
+            CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_INTENSITY;
+         }
          else if(W.Type == ENEMY_TANK_BODY)
+         {
+            CharInfo->Char.AsciiChar = ' ';
+            CharInfo->Attributes = BACKGROUND_GREEN | BACKGROUND_BLUE;
+         }
+         else if(W.Type == SUPER_ENEMY_TANK_BODY)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_GREEN | BACKGROUND_BLUE;
@@ -438,9 +485,14 @@ MakeMove(World *WorldBuffer, uint Height, Tank *T, COORD OldBodyPosition,
             T->BodyPosition = {NewMuzzlePosition.X - 1, NewMuzzlePosition.Y};
             WorldBuffer[T->MuzzlePosition.X*Height+T->MuzzlePosition.Y].Type = TANK_UP_DOWN;
          }
+
          if(T->Type == ENEMY)
          {
             WorldBuffer[T->BodyPosition.X*Height+T->BodyPosition.Y].Type = ENEMY_TANK_BODY;
+         }
+         else if(T->Type == SUPER_ENEMY)
+         {
+            WorldBuffer[T->BodyPosition.X*Height+T->BodyPosition.Y].Type = SUPER_ENEMY_TANK_BODY;
          }
          else if(T->Type == PLAYER)
          {
@@ -452,7 +504,7 @@ MakeMove(World *WorldBuffer, uint Height, Tank *T, COORD OldBodyPosition,
 void
 UpdateTankPosition(World *WorldBuffer, uint Height, Tank *T, Direction NewTankDirection)
 {
-   if(T->State == ACTIVE)
+   if(T->State == LIVE)
    {
       Direction OldTankDirection = T->TankDirection;
       COORD NewMuzzlePosition = T->MuzzlePosition;
@@ -594,6 +646,7 @@ MoveEnemieTanks(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOf
       NewSpeed = 0;
    }
 }
+
 void
 ClearProjectile(Projectile *P)
 {
@@ -621,23 +674,66 @@ void CheckProjectileOnTank(World *WorldBuffer, uint Height, Tank *TanksArray, ui
             WorldBuffer[TanksArray[i].MuzzlePosition.X*Height+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
             WorldBuffer[TanksArray[i].BodyPosition.X*Height+TanksArray[i].BodyPosition.Y].Type = EMPTY;
          }
+#if 0
+         if((P.Shooter->Type == PLAYER) && ((TanksArray[i].Type == ENEMY) || (TanksArray[i].Type == SUPER_ENEMY)))
+         {
+            TanksArray[i].State = DEAD;
+            WorldBuffer[TanksArray[i].MuzzlePosition.X*Height+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
+            WorldBuffer[TanksArray[i].BodyPosition.X*Height+TanksArray[i].BodyPosition.Y].Type = EMPTY;
+         }
+         else if((P.Shooter->Type == ENEMY) || (P.Shooter->Type == SUPER_ENEMY) && (TanksArray[i].Type == PLAYER))
+         {
+            TanksArray[i].State = DEAD;
+            WorldBuffer[TanksArray[i].MuzzlePosition.X*Height+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
+            WorldBuffer[TanksArray[i].BodyPosition.X*Height+TanksArray[i].BodyPosition.Y].Type = EMPTY;
+         }
+#endif
       }
    }
 }
 
 void
-MoveProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfTanks,
-               Projectile *P, COORD NewProjectilePosition,
-               uint MaxProjectiles)
+CheckProjectileOnWall(World *WorldBuffer, uint Height,
+                      Wall *WallsArray, uint NumberOfWalls, Projectile P)
+{
+   for(int i = 0;
+       i < NumberOfWalls;
+       i++)
+   {
+      if(WallsArray[i].State == LIVE)
+      {
+         if(WallsArray[i].Position.X == P.Position.X &&
+            WallsArray[i].Position.Y == P.Position.Y)
+         {
+            if(WallsArray[i].Strength != 0)
+            {
+               --WallsArray[i].Strength;
+               WorldBuffer[WallsArray[i].Position.X*Height+WallsArray[i].Position.Y].Type = HIT_WALL;
+            }
+            else
+            {
+               WallsArray[i].State = DEAD;
+               WorldBuffer[WallsArray[i].Position.X*Height+WallsArray[i].Position.Y].Type = EMPTY;
+            }
+         }
+      }
+   }
+}
+
+void
+MoveProjectile(World *WorldBuffer, uint Height,
+               Tank *TanksArray, uint NumberOfTanks,
+               Projectile *P, COORD NewProjectilePosition, uint MaxProjectiles,
+               Wall *WallsArray, uint NumberOfWalls)
 {
    WorldType Object = WorldBuffer[NewProjectilePosition.X*Height+NewProjectilePosition.Y].Type;
    COORD OldProjectilePosition = P->Position;
+   P->Position = NewProjectilePosition;
    if(Object == EMPTY)
    {
-      P->Position = NewProjectilePosition;
       P->Fire = true;
       P->Life++;
-      if(P->Shooter->Type == ENEMY)
+      if(P->Shooter->Type == ENEMY || P->Shooter->Type == SUPER_ENEMY)
       {
          WorldBuffer[P->Position.X*Height+P->Position.Y].Type = ENEMY_PROJECTILE;
       }
@@ -646,25 +742,41 @@ MoveProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfT
          WorldBuffer[P->Position.X*Height+P->Position.Y].Type = PLAYER_PROJECTILE;
       }
    }
-   else if(Object == WALL)
+   else if(Object == FIELD)
    {
       ClearProjectile(P);
    }
+   else if(Object == WALL)
+   {
+      CheckProjectileOnWall(WorldBuffer, Height, WallsArray, NumberOfWalls, *P);
+      ClearProjectile(P);
+   }
+   else if(Object == HIT_WALL)
+   {
+      CheckProjectileOnWall(WorldBuffer, Height, WallsArray, NumberOfWalls, *P);
+      ClearProjectile(P);
+   }
+   else if(Object == CHEST)
+   {
+      Game = GAME_OVER;
+   }
    else if(Object == TANK_LEFT_RIGHT || Object == TANK_UP_DOWN)
    {
-      P->Position = NewProjectilePosition;
       CheckProjectileOnTank(WorldBuffer, Height, TanksArray, NumberOfTanks, *P);
       ClearProjectile(P);
    }
    else if(Object == ENEMY_TANK_BODY)
    {
-      P->Position = NewProjectilePosition;
+      CheckProjectileOnTank(WorldBuffer, Height, TanksArray, NumberOfTanks, *P);
+      ClearProjectile(P);
+   }
+   else if(Object == SUPER_ENEMY_TANK_BODY)
+   {
       CheckProjectileOnTank(WorldBuffer, Height, TanksArray, NumberOfTanks, *P);
       ClearProjectile(P);
    }
    else if(Object == PLAYER_TANK_BODY)
    {
-      P->Position = NewProjectilePosition;
       CheckProjectileOnTank(WorldBuffer, Height, TanksArray, NumberOfTanks, *P);
       ClearProjectile(P);
    }
@@ -695,7 +807,8 @@ CheckNextProjectileMove(Projectile P, COORD NewProjectilePosition)
 }
 void
 ShootProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfTanks,
-                Projectile *P, uint MaxProjectiles)
+                Projectile *P, uint MaxProjectiles,
+                Wall *WallsArray, uint NumberOfWalls)
 {
    COORD NewProjectilePosition = P->Position;
    COORD OldProjectilePosition = P->Position;
@@ -703,13 +816,15 @@ ShootProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOf
    {
       NewProjectilePosition = CheckNextProjectileMove(*P, NewProjectilePosition);
       MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                     P, NewProjectilePosition, MaxProjectiles);
+                     P, NewProjectilePosition, MaxProjectiles,
+                     WallsArray, NumberOfWalls);
    }
    else if(P->Life < MaxProjectiles)
    {
       NewProjectilePosition = CheckNextProjectileMove(*P, NewProjectilePosition);
       MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                     P, NewProjectilePosition, MaxProjectiles);
+                     P, NewProjectilePosition, MaxProjectiles,
+                     WallsArray, NumberOfWalls);
       WorldBuffer[OldProjectilePosition.X*Height+OldProjectilePosition.Y].Type = EMPTY;
       P->Life++;
    }
@@ -722,7 +837,8 @@ ShootProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOf
 
 void
 UpdatePlayerProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfTanks,
-                       Projectile *P, float ProjectileSpeed, uint MaxProjectiles)
+                       Projectile *P, float ProjectileSpeed, uint MaxProjectiles,
+                       Wall *WallsArray, uint NumberOfWalls)
 {
    static float NewSpeed = 0;
    NewSpeed += P->Speed;
@@ -734,7 +850,8 @@ UpdatePlayerProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint N
       {
          NewProjectilePosition = CheckNextProjectileMove(*P, NewProjectilePosition);
          MoveProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
-                           P, NewProjectilePosition, MaxProjectiles);
+                           P, NewProjectilePosition, MaxProjectiles,
+                           WallsArray, NumberOfWalls);
          P->Life++;
          WorldBuffer[OldProjectilePosition.X*Height+OldProjectilePosition.Y].Type = EMPTY;
          if(P->Life >= MaxProjectiles)
@@ -753,7 +870,8 @@ UpdatePlayerProjectile(World *WorldBuffer, uint Height, Tank *TanksArray, uint N
 
 void
 UpdateEnemyProjectiles(World *WorldBuffer, uint Height, Tank *TanksArray, uint NumberOfTanks,
-                       Projectile *ProjectilesArray, uint MaxProjectiles, float ProjectileSpeed)
+                       Projectile *ProjectilesArray, uint MaxProjectiles, float ProjectileSpeed,
+                       Wall *WallsArray, uint NumberOfWalls)
 {
    static float NewSpeed = 0;
    NewSpeed += ProjectileSpeed;
@@ -763,9 +881,11 @@ UpdateEnemyProjectiles(World *WorldBuffer, uint Height, Tank *TanksArray, uint N
           i < NumberOfTanks;
           i++)
       {
-         if(TanksArray[i].State == ACTIVE)
+         if(TanksArray[i].State == LIVE)
          {
-            ShootProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks, &ProjectilesArray[i], MaxProjectiles);
+            ShootProjectile(WorldBuffer, Height, TanksArray, NumberOfTanks,
+                            &ProjectilesArray[i], MaxProjectiles,
+                            WallsArray, NumberOfWalls);
          }
          else
          {
@@ -775,5 +895,30 @@ UpdateEnemyProjectiles(World *WorldBuffer, uint Height, Tank *TanksArray, uint N
       NewSpeed = 0;
    }
 }
+
+ushort
+ReadFromConsole(HANDLE ConsoleHandle, INPUT_RECORD *InputBuffer, const int InputBufferSize, ulong *BufferEvents)
+{
+   ushort Result = 0;
+   KEY_EVENT_RECORD KeyEvent = {};
+   bool ReadFromConsoleInput = ReadConsoleInput(ConsoleHandle,
+                                                InputBuffer,
+                                                InputBufferSize,
+                                                BufferEvents);
+
+   if(ReadFromConsoleInput)
+   {
+      if(InputBuffer->EventType == KEY_EVENT)
+      {
+         KeyEvent = InputBuffer->Event.KeyEvent;
+         if(KeyEvent.bKeyDown)
+         {
+            Result = KeyEvent.wVirtualKeyCode;
+         }
+      }
+   }
+   return Result;
+}
+
 
 #endif
