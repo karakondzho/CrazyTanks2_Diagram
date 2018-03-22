@@ -66,34 +66,39 @@ int main()
 
       
    INPUT_RECORD InputBuffer = {};
-   const int InputBufferSize = 200;
+   const int InputBufferSize = 50;
    ulong InputBufferEvents = 0;
 
    const uint NumberOfWalls = 50;
    const uint WallStrength = 2;
    Wall WallsArray[NumberOfWalls] = {};
 
-   const uint NumberOfTanks = 15; //NOTE: This number includes player tank and GoldTank
+   const uint NumberOfTanks = 15; //NOTE: This number includes player tank
+   const uint TanksLife = 3;
    Tank TanksArray[NumberOfTanks] = {};
    Tank *PlayerTank = &TanksArray[0];
    Tank *GoldTank = &TanksArray[1];
+   const float TankSpeed = 0.003f;
    
    Projectile ProjectilesArray[NumberOfTanks] = {};
    Projectile *PlayerProjectile = &ProjectilesArray[0];
-   float ProjectileSpeed = 0.008f;
+   const float ProjectileSpeed = 0.008f;
    uint MaxProjectiles = 15;
 
    World WorldBuffer[BufferWidth*BufferHeight] = {};
+
    Chest GoldChest = {};
 
+   Caption LifeCaption[TanksLife] = {};
+
    InitializeWorld(WorldBuffer, BufferWidth, BufferHeight,
-                   TanksArray, NumberOfTanks,
+                   TanksArray, NumberOfTanks, TanksLife,
                    ProjectilesArray, ProjectileSpeed,
                    &GoldChest,
-                   WallsArray, NumberOfWalls, WallStrength);
+                   WallsArray, NumberOfWalls, WallStrength,
+                   LifeCaption, TanksLife);
+                   
 
-   bool Out = false;
-   float TankSpeed = 0.003f;
 
 
    while(Game != EXIT)
@@ -107,56 +112,53 @@ int main()
                                       InputBufferSize,
                                       &InputBufferEvents);
 
-         switch(Key)
+         if(Key == VK_ESCAPE)
          {
-            case VK_ESCAPE:
-               {
-                  Game = EXIT;
-               }break;
-            case VK_LEFT:
-               {
-                  UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, LEFT);
-               }break;
-
-            case VK_RIGHT:
-               {
-                  UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, RIGHT);
-               }break;
-
-            case VK_UP:
-               {
-                  UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, UP);
-               }break;
-
-            case VK_DOWN:
-               {
-                  UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, DOWN);
-               }break;
-
-            case VK_SPACE:
-               {
-                  if(PlayerProjectile->Shooter->State == LIVE)
-                  {
-                     ShootProjectile(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
-                                     PlayerProjectile, MaxProjectiles,
-                                     WallsArray, NumberOfWalls);
-                  }
-               }break;
-
-            default:
-               {
-               }break;
-
+            Game = EXIT;
+            break;
+         }
+         else if(Key == VK_ESCAPE)
+         {
+            Game = EXIT;
+         }
+         else if(Key == VK_LEFT)
+         {
+            UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, LEFT);
+         }
+         else if(Key == VK_RIGHT)
+         {
+            UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, RIGHT);
+         }
+         else if(Key == VK_UP)
+         {
+            UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, UP);
+         }
+         else if(Key == VK_DOWN)
+         {
+            UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, DOWN);
+         }
+         else if(Key == VK_SPACE)
+         {
+            if(PlayerProjectile->Shooter->State == LIVE)
+            {
+               ShootProjectile(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
+                               PlayerProjectile, MaxProjectiles,
+                               WallsArray, NumberOfWalls,
+                               LifeCaption);
+            }
          }
 
          MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
          UpdateEnemyProjectiles(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
                                 ProjectilesArray, MaxProjectiles, ProjectileSpeed,
-                                WallsArray, NumberOfWalls);
+                                WallsArray, NumberOfWalls,
+                                LifeCaption);
 
          UpdatePlayerProjectile(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
                                 PlayerProjectile, ProjectileSpeed, MaxProjectiles,
-                                WallsArray, NumberOfWalls);
+                                WallsArray, NumberOfWalls,
+                                LifeCaption);
+         CheckOnWin(TanksArray, NumberOfTanks);
          DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters);
 
 
@@ -176,31 +178,92 @@ int main()
                BufferOfCharacters[i*BufferHeight+j].Attributes = GameOverCharacters[i*BufferHeight+j].Attributes;
             }
          }
+
          ushort Key = ReadFromConsole(ConsoleInHandle,
                                       &InputBuffer,
                                       InputBufferSize,
                                       &InputBufferEvents);
 
-         switch(Key)
+         ushort R = 0x52;
+         if(Key == VK_ESCAPE)
          {
-            case VK_ESCAPE:
-               {
-                  Game = EXIT;
-               }break;
-            case 0x52:
-               {
-                  TanksArray[NumberOfTanks] = {};
-                  InitializeWorld(WorldBuffer, BufferWidth, BufferHeight,
-                                  TanksArray, NumberOfTanks,
-                                  ProjectilesArray, ProjectileSpeed,
-                                  &GoldChest,
-                                  WallsArray, NumberOfWalls, WallStrength);
-                  UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, UP);
-                  Game = RUNNING;
-               }break;
-            default:
-               {
-               }break;
+            Game = EXIT;
+            break;
+         }
+         else if(Key == R)
+         {
+
+            InitializeWorld(WorldBuffer, BufferWidth, BufferHeight,
+                            TanksArray, NumberOfTanks, TanksLife,
+                            ProjectilesArray, ProjectileSpeed,
+                            &GoldChest,
+                            WallsArray, NumberOfWalls, WallStrength,
+                            LifeCaption, TanksLife);
+
+            UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, UP);
+            UpdateEnemyProjectiles(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
+                                   ProjectilesArray, MaxProjectiles, ProjectileSpeed,
+                                   WallsArray, NumberOfWalls,
+                                   LifeCaption);
+
+            UpdatePlayerProjectile(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
+                                   PlayerProjectile, ProjectileSpeed, MaxProjectiles,
+                                   WallsArray, NumberOfWalls,
+                                   LifeCaption);
+            MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
+            DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters);
+            Game = RUNNING;
+         }
+      }
+      else if(Game == WIN)
+      {
+         InitializeGameWin();
+         for(int i = 0;
+             i < BufferWidth;
+             i++)
+         {
+            for(int j = 0;
+                j < BufferHeight;
+                j++)
+            {
+               BufferOfCharacters[i*BufferHeight+j].Char.AsciiChar = GameWinCharacters[i*BufferHeight+j].Char.AsciiChar;
+               BufferOfCharacters[i*BufferHeight+j].Attributes = GameWinCharacters[i*BufferHeight+j].Attributes;
+            }
+         }
+         ushort Key = ReadFromConsole(ConsoleInHandle,
+                                      &InputBuffer,
+                                      InputBufferSize,
+                                      &InputBufferEvents);
+
+         ushort R = 0x52;
+         if(Key == VK_ESCAPE)
+         {
+            Game = EXIT;
+            break;
+         }
+         else if(Key == R)
+         {
+
+            InitializeWorld(WorldBuffer, BufferWidth, BufferHeight,
+                            TanksArray, NumberOfTanks, TanksLife,
+                            ProjectilesArray, ProjectileSpeed,
+                            &GoldChest,
+                            WallsArray, NumberOfWalls, WallStrength,
+                            LifeCaption, TanksLife);
+
+            UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, UP);
+            UpdateEnemyProjectiles(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
+                                   ProjectilesArray, MaxProjectiles, ProjectileSpeed,
+                                   WallsArray, NumberOfWalls,
+                                   LifeCaption);
+
+            UpdatePlayerProjectile(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
+                                   PlayerProjectile, ProjectileSpeed, MaxProjectiles,
+                                   WallsArray, NumberOfWalls,
+                                   LifeCaption);
+            MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
+            DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters);
+            Game = RUNNING;
          }
       }
 

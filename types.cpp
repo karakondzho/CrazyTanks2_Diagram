@@ -26,10 +26,12 @@ enum Direction
    DOWN,
 };
 
-//TODO: SUPER_ENEMY_TANK_BODY is temporary and need to be deleted after testing
 enum WorldType
 {
    CAPTION,
+   LIFE_COUNTER_RED,
+   LIFE_COUNTER_GREY,
+   ENEMIES_COUNTER,
    EMPTY,
    FIELD,
    WALL,
@@ -38,18 +40,17 @@ enum WorldType
    TANK_LEFT_RIGHT,
    TANK_UP_DOWN,
    ENEMY_TANK_BODY,
-   SUPER_ENEMY_TANK_BODY,
    PLAYER_TANK_BODY,
+   PLAYER_MUZZLE_LEFT_RIGHT,
+   PLAYER_MUZZLE_UP_DOWN,
    ENEMY_PROJECTILE,
    PLAYER_PROJECTILE,
 };
 
-//TODO: SUPER_ENEMY is temporary and need to be deleted after testing
 enum TankType
 {
    EMPTY_TANK,
    ENEMY,
-   SUPER_ENEMY,
    PLAYER,
 };
 
@@ -71,6 +72,7 @@ struct Tank
    Direction TankDirection;
    TankType Type;
    ObjectState State;
+   uint Life;
 };
 
 struct Wall
@@ -92,6 +94,12 @@ struct Projectile
 };
 
 struct Chest
+{
+   COORD Position;
+   ObjectState State;
+};
+
+struct Caption
 {
    COORD Position;
    ObjectState State;
