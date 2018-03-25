@@ -9,7 +9,7 @@ int main()
 
    if(!InitializeConsole(&ConsoleInHandle, &ConsoleOutHandle))
    {
-      return 1;
+      return(1);
    }
 
    const char* ConsoleTitle = "Crazy Tanks";
@@ -82,7 +82,7 @@ int main()
    
    Projectile ProjectilesArray[NumberOfTanks] = {};
    Projectile *PlayerProjectile = &ProjectilesArray[0];
-   const float ProjectileSpeed = 0.008f;
+   const float ProjectileSpeed = 0.03f;
    uint MaxProjectiles = 15;
 
    World WorldBuffer[BufferWidth*BufferHeight] = {};
@@ -90,13 +90,16 @@ int main()
    Chest GoldChest = {};
 
    Caption LifeCaption[TanksLife] = {};
+   const uint EnemyCaptionCounter = 17; //17 because caption will be - Enemies killed:||
+   Caption EnemyCaption[17] = {};
 
    InitializeWorld(WorldBuffer, BufferWidth, BufferHeight,
                    TanksArray, NumberOfTanks, TanksLife,
                    ProjectilesArray, ProjectileSpeed,
                    &GoldChest,
                    WallsArray, NumberOfWalls, WallStrength,
-                   LifeCaption, TanksLife);
+                   LifeCaption, TanksLife,
+                   EnemyCaption, EnemyCaptionCounter);
                    
 
 
@@ -159,7 +162,9 @@ int main()
                                 WallsArray, NumberOfWalls,
                                 LifeCaption);
          CheckOnWin(TanksArray, NumberOfTanks);
-         DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters);
+         CountDeadTanks(TanksArray, NumberOfTanks, BufferHeight, EnemyCaption);
+         DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters, LifeCaption,
+                                EnemyCaption, EnemyCaptionCounter);
 
 
       }
@@ -198,8 +203,10 @@ int main()
                             ProjectilesArray, ProjectileSpeed,
                             &GoldChest,
                             WallsArray, NumberOfWalls, WallStrength,
-                            LifeCaption, TanksLife);
+                            LifeCaption, TanksLife,
+                            EnemyCaption, EnemyCaptionCounter);
 
+            MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
             UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, UP);
             UpdateEnemyProjectiles(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
                                    ProjectilesArray, MaxProjectiles, ProjectileSpeed,
@@ -210,8 +217,8 @@ int main()
                                    PlayerProjectile, ProjectileSpeed, MaxProjectiles,
                                    WallsArray, NumberOfWalls,
                                    LifeCaption);
-            MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
-            DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters);
+            DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters, LifeCaption,
+                                   EnemyCaption, EnemyCaptionCounter);
             Game = RUNNING;
          }
       }
@@ -249,8 +256,10 @@ int main()
                             ProjectilesArray, ProjectileSpeed,
                             &GoldChest,
                             WallsArray, NumberOfWalls, WallStrength,
-                            LifeCaption, TanksLife);
+                            LifeCaption, TanksLife,
+                            EnemyCaption, EnemyCaptionCounter);
 
+            MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
             UpdateTankPosition(WorldBuffer, BufferHeight, PlayerTank, UP);
             UpdateEnemyProjectiles(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
                                    ProjectilesArray, MaxProjectiles, ProjectileSpeed,
@@ -261,8 +270,8 @@ int main()
                                    PlayerProjectile, ProjectileSpeed, MaxProjectiles,
                                    WallsArray, NumberOfWalls,
                                    LifeCaption);
-            MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
-            DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters);
+            DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters, LifeCaption,
+                                   EnemyCaption, EnemyCaptionCounter);
             Game = RUNNING;
          }
       }

@@ -458,9 +458,38 @@ MakeLifeCaption(World *WorldBuffer, Caption *LifeCaption, uint LifeCaptionLength
    {
       LifeCaption[i].Position.Y = i;
       LifeCaption[i].State = LIVE;
+      LifeCaption[i].Character = 3;
       WorldBuffer[i].Type = LIFE_COUNTER_RED;
    }
 
+}
+
+void
+MakeEnemyCaption(World *WorldBuffer, Caption *EnemyCaption, uint BufferHeight, uint EnemyCaptionCounter)
+{
+   for(uint i = 0;
+       i < EnemyCaptionCounter;
+       i++)
+   {
+      EnemyCaption[i].Position.Y = i + (BufferHeight - EnemyCaptionCounter-1);
+      EnemyCaption[i].State = LIVE;
+      WorldBuffer[EnemyCaption[i].Position.Y].Type = ENEMIES_COUNTER;
+   }
+   EnemyCaption[0].Character = 'E';
+   EnemyCaption[1].Character = 'n';
+   EnemyCaption[2].Character = 'e';
+   EnemyCaption[3].Character = 'm';
+   EnemyCaption[4].Character = 'i';
+   EnemyCaption[5].Character = 'e';
+   EnemyCaption[6].Character = 's';
+   EnemyCaption[7].Character = ' ';
+   EnemyCaption[8].Character = 'k';
+   EnemyCaption[9].Character = 'i';
+   EnemyCaption[10].Character = 'l';
+   EnemyCaption[11].Character = 'l';
+   EnemyCaption[12].Character = 'e';
+   EnemyCaption[13].Character = 'd';
+   EnemyCaption[14].Character = ':';
 }
 
 void
@@ -469,16 +498,19 @@ InitializeWorld(World *WorldBuffer, uint BufferWidth, uint BufferHeight,
                 Projectile *ProjectilesArray, float ProjectileSpeed,
                 Chest *GoldChest,
                 Wall *WallsArray, uint NumberOfWalls, uint WallStrength,
-                Caption *LifeCaption, uint LifeCaptionLength)
+                Caption *LifeCaption, uint LifeCaptionLength,
+                Caption *EnemyCaption, uint EnemyCaptionCounter)
 {
    ClearWorld(WorldBuffer, BufferWidth, BufferHeight);
    ClearCaption(LifeCaption, LifeCaptionLength);
+   ClearCaption(EnemyCaption, EnemyCaptionCounter);
    ClearTanksArray(TanksArray, NumberOfTanks);
    ClearWallsArray(WallsArray, NumberOfWalls);
    ClearProjectileArray(ProjectilesArray, NumberOfTanks);
 
    MakeField(WorldBuffer, BufferWidth, BufferHeight);
    MakeLifeCaption(WorldBuffer, LifeCaption, LifeCaptionLength);
+   MakeEnemyCaption(WorldBuffer, EnemyCaption, BufferHeight, EnemyCaptionCounter);
    MakeChest(WorldBuffer, BufferWidth, BufferHeight, GoldChest);
    MakeWalls(WorldBuffer, BufferWidth, BufferHeight, WallsArray, NumberOfWalls, WallStrength);
    MakeTanks(WorldBuffer, BufferWidth, BufferHeight, TanksArray, NumberOfTanks, TanksLife);
@@ -486,7 +518,8 @@ InitializeWorld(World *WorldBuffer, uint BufferWidth, uint BufferHeight,
 }
 
 void
-DrawCharactersToBuffer(World *WorldBuffer, uint BufferWidth, uint BufferHeight, CHAR_INFO *BufferOfCharacters)
+DrawCharactersToBuffer(World *WorldBuffer, uint BufferWidth, uint BufferHeight, CHAR_INFO *BufferOfCharacters,
+                       Caption *LifeCaption, Caption *EnemyCaption, uint EnemyCaptionCounter)
 {
    for(int i = 0;
        i < BufferWidth;
@@ -579,19 +612,23 @@ DrawCharactersToBuffer(World *WorldBuffer, uint BufferWidth, uint BufferHeight, 
          }
          else if(W.Type == LIFE_COUNTER_RED)
          {
-            CharInfo->Char.AsciiChar = 3;
+            CharInfo->Char.AsciiChar = LifeCaption[0].Character;
             CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE |
                BACKGROUND_INTENSITY;
          }
          else if(W.Type == LIFE_COUNTER_GREY)
          {
-            CharInfo->Char.AsciiChar = 3;
+            CharInfo->Char.AsciiChar = LifeCaption[0].Character;
             CharInfo->Attributes = FOREGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE |
                BACKGROUND_INTENSITY;
          }
          else if(W.Type == ENEMIES_COUNTER)
          {
             //TODO: This needs to be implemented
+            int CaptionEdge = BufferHeight - EnemyCaptionCounter - 1;
+            CharInfo->Char.AsciiChar = EnemyCaption[j-CaptionEdge].Character;
+            CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE |
+               BACKGROUND_INTENSITY;
          }
       }
    }
@@ -757,9 +794,9 @@ UpdateTankPosition(World *WorldBuffer, uint BufferHeight, Tank *T, Direction New
 void
 MoveEnemieTanks(World *WorldBuffer, uint BufferHeight, Tank *TanksArray, uint NumberOfTanks, float Speed)
 {
-   static float GameSpeed = 0;
-   GameSpeed += Speed;
-   if(GameSpeed > 1)
+   static float TankSpeed = 0;
+   TankSpeed += Speed;
+   if(TankSpeed >= 1)
    {
       for(int i = 1;
           i < NumberOfTanks;
@@ -783,7 +820,7 @@ MoveEnemieTanks(World *WorldBuffer, uint BufferHeight, Tank *TanksArray, uint Nu
             UpdateTankPosition(WorldBuffer, BufferHeight, &TanksArray[i], DOWN);
          }
       }
-      GameSpeed = 0;
+      TankSpeed = 0;
    }
 }
 
@@ -995,9 +1032,9 @@ UpdatePlayerProjectile(World *WorldBuffer, uint BufferHeight, Tank *TanksArray, 
                        Wall *WallsArray, uint NumberOfWalls,
                        Caption *LifeCaption)
 {
-   extern float GameSpeed;
-   GameSpeed += P->Speed;
-   if(GameSpeed > 1)
+   static float PlayerProjectileSpeed = 0;
+   PlayerProjectileSpeed += P->Speed;
+   if(PlayerProjectileSpeed >= 1)
    {
       COORD OldProjectilePosition = P->Position;
       COORD NewProjectilePosition = P->Position;
@@ -1019,7 +1056,7 @@ UpdatePlayerProjectile(World *WorldBuffer, uint BufferHeight, Tank *TanksArray, 
       {
          ClearProjectile(P);
       }
-      GameSpeed = 0;
+      PlayerProjectileSpeed = 0;
    }
 
 }
@@ -1030,9 +1067,9 @@ UpdateEnemyProjectiles(World *WorldBuffer, uint BufferHeight, Tank *TanksArray, 
                        Wall *WallsArray, uint NumberOfWalls,
                        Caption *LifeCaption)
 {
-   extern float GameSpeed;
-   GameSpeed += ProjectileSpeed;
-   if(GameSpeed > 1)
+   static float EnemyProjectileSpeed = 0;
+   EnemyProjectileSpeed += ProjectileSpeed;
+   if(EnemyProjectileSpeed >= 1)
    {
       for(int i = 1;
           i < NumberOfTanks;
@@ -1051,7 +1088,7 @@ UpdateEnemyProjectiles(World *WorldBuffer, uint BufferHeight, Tank *TanksArray, 
             WorldBuffer[ProjectilesArray[i].Position.X*BufferHeight+ProjectilesArray[i].Position.Y].Type = EMPTY;
          }
       }
-      GameSpeed = 0;
+      EnemyProjectileSpeed = 0;
    }
 }
 
@@ -1092,6 +1129,23 @@ CheckOnWin(Tank *TanksArray, uint NumberOfTanks)
       }
    }
    Game = WIN;
+}
+
+void
+CountDeadTanks(Tank *TanksArray, uint NumberOfTanks, uint BufferHeight, Caption *EnemyCaption)
+{
+   int Counter = 0;
+   for(int i = 1;
+       i < NumberOfTanks;
+       i++)
+   {
+      if(TanksArray[i].State == DEAD)
+      {
+         Counter++;
+      }
+   }
+   EnemyCaption[15].Character = 48+(Counter/10);//NOTE: 48 is 0 in ASCII table
+   EnemyCaption[16].Character = 48+(Counter%10);
 }
 
 #endif

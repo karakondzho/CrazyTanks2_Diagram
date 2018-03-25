@@ -103,6 +103,7 @@ struct Caption
 {
    COORD Position;
    ObjectState State;
+   char Character;
 };
 
 #endif
