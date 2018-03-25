@@ -45,6 +45,7 @@ enum WorldType
    PLAYER_MUZZLE_UP_DOWN,
    ENEMY_PROJECTILE,
    PLAYER_PROJECTILE,
+   ANIMATION,
 };
 
 enum TankType
@@ -73,6 +74,7 @@ struct Tank
    TankType Type;
    ObjectState State;
    uint Life;
+   uint Animation;
 };
 
 struct Wall
@@ -81,6 +83,7 @@ struct Wall
    ObjectState State;
    uint BlocksInWall;
    uint Strength;
+   uint Animation;
 };
 
 struct Projectile

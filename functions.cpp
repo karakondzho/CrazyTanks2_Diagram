@@ -60,6 +60,7 @@ InitializeTank(World *WorldBuffer, uint BufferHeight, Tank *T,
    T->Type = Type;
    T->State = LIVE;
    T->Life = TankLife;
+   T->Animation = 3;
    if(TankDirection == 0)
    {
       T->BodyPosition = {T->MuzzlePosition.X, T->MuzzlePosition.Y + 1};
@@ -161,6 +162,7 @@ MakeWalls(World *WorldBuffer, uint BufferWidth, uint BufferHeight, Wall *W, uint
                W[Index].Position = {i, j};
                W[Index].State = LIVE;
                W[Index].Strength = WallStrength;
+               W[Index].Animation = 3;
                Index++;
             }
 
@@ -388,6 +390,7 @@ ClearTanksArray(Tank *TanksArray, uint NumberOfTanks)
       TanksArray[i].TankDirection = LEFT;
       TanksArray[i].Type = EMPTY_TANK;
       TanksArray[i].State = DEAD;
+      TanksArray[i].Animation = 0;
    }
 }
 
@@ -402,6 +405,7 @@ ClearWallsArray(Wall *WallsArray, uint NumberOfWalls)
       WallsArray[i].State = DEAD;
       WallsArray[i].BlocksInWall = 0;
       WallsArray[i].Strength = 0;
+      WallsArray[i].Animation = 0;
    }
 }
 
@@ -529,106 +533,131 @@ DrawCharactersToBuffer(World *WorldBuffer, uint BufferWidth, uint BufferHeight, 
           j < BufferHeight;
           j++)
       {
-         World W = WorldBuffer[i*BufferHeight+j];
+         World *W = &WorldBuffer[i*BufferHeight+j];
          CHAR_INFO *CharInfo = &BufferOfCharacters[i*BufferHeight+j];
 
-         if(W.Type == EMPTY)
+         if(W->Type == EMPTY)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_GREEN |
                BACKGROUND_BLUE| BACKGROUND_INTENSITY;
          }
-         else if(W.Type == CAPTION)
+         else if(W->Type == CAPTION)
          {
             CharInfo->Char.AsciiChar = 0;
             CharInfo->Attributes = FOREGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_GREEN |
                BACKGROUND_INTENSITY;
          }
-         else if(W.Type == FIELD)
+         else if(W->Type == FIELD)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_RED;
          }
-         else if(W.Type == WALL)
+         else if(W->Type == WALL)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_INTENSITY;
          }
-         else if(W.Type == HIT_WALL)
+         else if(W->Type == HIT_WALL)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_RED;
          }
-         else if(W.Type == CHEST)
+         else if(W->Type == CHEST)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == PLAYER_TANK_BODY)
+         else if(W->Type == PLAYER_TANK_BODY)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == PLAYER_MUZZLE_LEFT_RIGHT)
+         else if(W->Type == PLAYER_MUZZLE_LEFT_RIGHT)
          {
             CharInfo->Char.AsciiChar = (char)205;
             CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | 
                BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == PLAYER_MUZZLE_UP_DOWN)
+         else if(W->Type == PLAYER_MUZZLE_UP_DOWN)
          {
             CharInfo->Char.AsciiChar = (char)186;
             CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | 
                BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == ENEMY_TANK_BODY)
+         else if(W->Type == ENEMY_TANK_BODY)
          {
             CharInfo->Char.AsciiChar = ' ';
             CharInfo->Attributes = BACKGROUND_GREEN | BACKGROUND_BLUE;
          }
-         else if(W.Type == TANK_LEFT_RIGHT)
+         else if(W->Type == TANK_LEFT_RIGHT)
          {
             CharInfo->Char.AsciiChar = (char)205;
             CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | 
                BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == TANK_UP_DOWN)
+         else if(W->Type == TANK_UP_DOWN)
          {
             CharInfo->Char.AsciiChar = (char)186;
             CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | 
                BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == ENEMY_PROJECTILE)
+         else if(W->Type == ENEMY_PROJECTILE)
          {
             CharInfo->Char.AsciiChar = (char)248;
             CharInfo->Attributes = FOREGROUND_GREEN | FOREGROUND_BLUE | 
                BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == PLAYER_PROJECTILE)
+         else if(W->Type == PLAYER_PROJECTILE)
          {
             CharInfo->Char.AsciiChar = (char)248;
             CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | 
                BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY;
          }
-         else if(W.Type == LIFE_COUNTER_RED)
+         else if(W->Type == LIFE_COUNTER_RED)
          {
             CharInfo->Char.AsciiChar = LifeCaption[0].Character;
             CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE |
                BACKGROUND_INTENSITY;
          }
-         else if(W.Type == LIFE_COUNTER_GREY)
+         else if(W->Type == LIFE_COUNTER_GREY)
          {
             CharInfo->Char.AsciiChar = LifeCaption[0].Character;
             CharInfo->Attributes = FOREGROUND_INTENSITY | BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE |
                BACKGROUND_INTENSITY;
          }
-         else if(W.Type == ENEMIES_COUNTER)
+         else if(W->Type == ENEMIES_COUNTER)
          {
-            //TODO: This needs to be implemented
             int CaptionEdge = BufferHeight - EnemyCaptionCounter - 1;
             CharInfo->Char.AsciiChar = EnemyCaption[j-CaptionEdge].Character;
             CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE |
                BACKGROUND_INTENSITY;
+         }
+         else if(W->Type == ANIMATION)
+         {
+            static uint Animation = 0;
+            static float AnimationSpeed = 0;
+            AnimationSpeed += 0.02f;
+            if(AnimationSpeed > 1)
+            {
+               if(Animation < 3)
+               {
+                  CharInfo->Char.AsciiChar = 178-Animation;
+                  CharInfo->Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY |
+                     BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE |
+                     BACKGROUND_INTENSITY;
+                  Animation++;
+               }
+               else
+               {
+                  Animation = 0;
+                  W->Type = EMPTY;
+                  CharInfo->Char.AsciiChar = ' ';
+                  CharInfo->Attributes = BACKGROUND_RED | BACKGROUND_GREEN |
+                     BACKGROUND_BLUE| BACKGROUND_INTENSITY;
+               }
+               AnimationSpeed = 0;
+            }
          }
       }
    }
@@ -872,7 +901,7 @@ void CheckProjectileOnTank(World *WorldBuffer, uint BufferHeight, Tank *TanksArr
                }
                TanksArray[i].State = DEAD;
                WorldBuffer[TanksArray[i].MuzzlePosition.X*BufferHeight+TanksArray[i].MuzzlePosition.Y].Type = EMPTY;
-               WorldBuffer[TanksArray[i].BodyPosition.X*BufferHeight+TanksArray[i].BodyPosition.Y].Type = EMPTY;
+               WorldBuffer[TanksArray[i].BodyPosition.X*BufferHeight+TanksArray[i].BodyPosition.Y].Type = ANIMATION;
             }
          }
       }
