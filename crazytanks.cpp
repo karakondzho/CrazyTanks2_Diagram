@@ -151,7 +151,7 @@ int main()
             }
          }
 
-         MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
+//         MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
          UpdateEnemyProjectiles(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
                                 ProjectilesArray, MaxProjectiles, ProjectileSpeed,
                                 WallsArray, NumberOfWalls,
@@ -161,6 +161,7 @@ int main()
                                 PlayerProjectile, ProjectileSpeed, MaxProjectiles,
                                 WallsArray, NumberOfWalls,
                                 LifeCaption);
+         UpdatePlayerTank(WorldBuffer, BufferHeight, PlayerTank);
          CheckOnWin(TanksArray, NumberOfTanks);
          CountDeadTanks(TanksArray, NumberOfTanks, BufferHeight, EnemyCaption);
          DrawCharactersToBuffer(WorldBuffer, BufferWidth, BufferHeight, BufferOfCharacters, LifeCaption,

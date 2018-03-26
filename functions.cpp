@@ -18,7 +18,6 @@ InitializeConsole(HANDLE *InputHandle, HANDLE *OutputHandle)
       (*OutputHandle) == INVALID_HANDLE_VALUE)
    {
       Result = false;
-      return Result;
    }
    
    return Result;
@@ -678,31 +677,58 @@ MakeMove(World *WorldBuffer, uint BufferHeight, Tank *T, COORD OldBodyPosition,
          if(NewTankDirection == LEFT)
          {
             T->BodyPosition = {NewMuzzlePosition.X, NewMuzzlePosition.Y + 1};
-            WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_LEFT_RIGHT;
+            if(T->Type == ENEMY)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_LEFT_RIGHT;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = ENEMY_TANK_BODY;
+            }
+            else if(T->Type == PLAYER)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = PLAYER_MUZZLE_LEFT_RIGHT;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = PLAYER_TANK_BODY;
+            }
          }
          else if(NewTankDirection == RIGHT)
          {
             T->BodyPosition = {NewMuzzlePosition.X, NewMuzzlePosition.Y - 1};
-            WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_LEFT_RIGHT;
+            if(T->Type == ENEMY)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_LEFT_RIGHT;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = ENEMY_TANK_BODY;
+            }
+            else if(T->Type == PLAYER)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = PLAYER_MUZZLE_LEFT_RIGHT;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = PLAYER_TANK_BODY;
+            }
          }
          else if(NewTankDirection == UP)
          {
             T->BodyPosition = {NewMuzzlePosition.X + 1, NewMuzzlePosition.Y};
-            WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_UP_DOWN;
+            if(T->Type == ENEMY)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_UP_DOWN;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = ENEMY_TANK_BODY;
+            }
+            else if(T->Type == PLAYER)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = PLAYER_MUZZLE_UP_DOWN;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = PLAYER_TANK_BODY;
+            }
          }
          else if(NewTankDirection == DOWN)
          {
             T->BodyPosition = {NewMuzzlePosition.X - 1, NewMuzzlePosition.Y};
-            WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_UP_DOWN;
-         }
-
-         if(T->Type == ENEMY)
-         {
-            WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = ENEMY_TANK_BODY;
-         }
-         else if(T->Type == PLAYER)
-         {
-            WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = PLAYER_TANK_BODY;
+            if(T->Type == ENEMY)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = TANK_UP_DOWN;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = ENEMY_TANK_BODY;
+            }
+            else if(T->Type == PLAYER)
+            {
+               WorldBuffer[T->MuzzlePosition.X*BufferHeight+T->MuzzlePosition.Y].Type = PLAYER_MUZZLE_UP_DOWN;
+               WorldBuffer[T->BodyPosition.X*BufferHeight+T->BodyPosition.Y].Type = PLAYER_TANK_BODY;
+            }
          }
       }
 }
@@ -710,13 +736,13 @@ MakeMove(World *WorldBuffer, uint BufferHeight, Tank *T, COORD OldBodyPosition,
 void
 UpdateTankPosition(World *WorldBuffer, uint BufferHeight, Tank *T, Direction NewTankDirection)
 {
+   Direction OldTankDirection = T->TankDirection;
+   COORD NewMuzzlePosition = T->MuzzlePosition;
+   COORD OldMuzzlePosition = T->MuzzlePosition;
+   COORD OldBodyPosition = T->BodyPosition;
+
    if(T->State == LIVE)
    {
-      Direction OldTankDirection = T->TankDirection;
-      COORD NewMuzzlePosition = T->MuzzlePosition;
-      COORD OldMuzzlePosition = T->MuzzlePosition;
-      COORD OldBodyPosition = T->BodyPosition;
-
       if(NewTankDirection == LEFT)
       {
          if(OldTankDirection == NewTankDirection)
@@ -1175,6 +1201,20 @@ CountDeadTanks(Tank *TanksArray, uint NumberOfTanks, uint BufferHeight, Caption 
    }
    EnemyCaption[15].Character = 48+(Counter/10);//NOTE: 48 is 0 in ASCII table
    EnemyCaption[16].Character = 48+(Counter%10);
+}
+
+void
+UpdatePlayerTank(World *WorldBuffer, uint Height, Tank *PlayerTank)
+{
+   if(PlayerTank->TankDirection == LEFT || PlayerTank->TankDirection == RIGHT)
+   {
+      WorldBuffer[PlayerTank->MuzzlePosition.X*Height+PlayerTank->MuzzlePosition.Y].Type = PLAYER_MUZZLE_LEFT_RIGHT;
+   }
+   else if(PlayerTank->TankDirection == UP || PlayerTank->TankDirection == DOWN)
+   {
+      WorldBuffer[PlayerTank->MuzzlePosition.X*Height+PlayerTank->MuzzlePosition.Y].Type = PLAYER_MUZZLE_UP_DOWN;
+   }
+   WorldBuffer[PlayerTank->BodyPosition.X*Height+PlayerTank->BodyPosition.Y].Type = PLAYER_TANK_BODY;
 }
 
 #endif
