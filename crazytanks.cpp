@@ -151,7 +151,7 @@ int main()
             }
          }
 
-//         MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
+         MoveEnemieTanks(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks, TankSpeed);
          UpdateEnemyProjectiles(WorldBuffer, BufferHeight, TanksArray, NumberOfTanks,
                                 ProjectilesArray, MaxProjectiles, ProjectileSpeed,
                                 WallsArray, NumberOfWalls,
